@@ -3,7 +3,7 @@ const Task = require('../models/task');
 
 const router = new express.Router();
 
-app.post('/tasks', async (req, res) => {
+router.post('/tasks', async (req, res) => {
   const task = new Task(req.body);
   try {
     await task.save();
@@ -13,7 +13,7 @@ app.post('/tasks', async (req, res) => {
   }
 });
 
-app.get('/tasks', async (req, res) => {
+router.get('/tasks', async (req, res) => {
   try {
     const tasks = await Task.find({});
     res.status(201).send(tasks);
@@ -22,7 +22,7 @@ app.get('/tasks', async (req, res) => {
   }
 });
 
-app.get('/tasks/:id', async (req, res) => {
+router.get('/tasks/:id', async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) {
@@ -34,7 +34,7 @@ app.get('/tasks/:id', async (req, res) => {
   }
 });
 
-app.patch('/tasks/:id', async (req, res) => {
+router.patch('/tasks/:id', async (req, res) => {
   const allowedUpdates = ['description', 'completed'];
   const updates = Object.keys(req.body);
   const isValidUpdate = updates.every((update) =>
@@ -44,10 +44,13 @@ app.patch('/tasks/:id', async (req, res) => {
     res.status(400).send({ error: 'Invalid update.' });
   }
   try {
-    const task = await Task.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const task = await Task.findById(req.params.id);
+    updates.forEach((update) => (task[update] = req.body[update]));
+    await task.save();
+    // const task = await Task.findByIdAndUpdate(req.params.id, req.body, {
+    //   new: true,
+    //   runValidators: true,
+    // });
     if (!task) {
       return res.status(404).send();
     }
@@ -57,7 +60,7 @@ app.patch('/tasks/:id', async (req, res) => {
   }
 });
 
-app.delete('/tasks/:id', async (req, res) => {
+router.delete('/tasks/:id', async (req, res) => {
   try {
     const task = await Task.findByIdAndDelete(req.params.id);
     if (!task) {
