@@ -4,6 +4,7 @@ const auth = require('../middlewares/auth');
 
 const router = new express.Router();
 
+// Create a new task
 router.post('/tasks', auth, async (req, res) => {
   const task = new Task({
     ...req.body,
@@ -17,16 +18,43 @@ router.post('/tasks', auth, async (req, res) => {
   }
 });
 
+/**
+ * Get all the user's tasks
+ * @param completed - Boolean
+ * @param limit - Number
+ * @param skip - Number
+ * @param sortBy - eg: createdAt:desc
+ */
 router.get('/tasks', auth, async (req, res) => {
+  const match = {};
+  if (req.query.completed) {
+    match.completed = req.query.completed === 'true';
+  }
+  const sort = {};
+  if (req.query.sortBy) {
+    const [field, type] = req.query.sortBy.split(':');
+    sort[field] = type === 'desc' ? -1 : 1;
+  }
   try {
     // Using virtual relationship below
-    await req.user.populate('tasks').execPopulate();
+    await req.user
+      .populate({
+        path: 'tasks',
+        match,
+        options: {
+          limit: parseInt(req.query.limit),
+          skip: parseInt(req.query.skip),
+          sort,
+        },
+      })
+      .execPopulate();
     res.status(201).send(req.user.tasks);
   } catch (err) {
     res.status(500).send();
   }
 });
 
+// Get a task
 router.get('/tasks/:id', auth, async (req, res) => {
   try {
     const task = await Task.findOne({
@@ -42,6 +70,7 @@ router.get('/tasks/:id', auth, async (req, res) => {
   }
 });
 
+// Update a task
 router.patch('/tasks/:id', auth, async (req, res) => {
   const allowedUpdates = ['description', 'completed'];
   const updates = Object.keys(req.body);
@@ -67,6 +96,7 @@ router.patch('/tasks/:id', auth, async (req, res) => {
   }
 });
 
+// Delete a task
 router.delete('/tasks/:id', auth, async (req, res) => {
   try {
     const task = await Task.findOneAndDelete({
